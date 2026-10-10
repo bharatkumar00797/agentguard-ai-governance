@@ -78,8 +78,8 @@ class Guard:
             if output and tp.block_secrets_in_output and any(f.code in _SECRET_CODES for f in sd):
                 verdict = Verdict.DENY
                 reasons.append("model output would leak a secret")
-            elif tp.redact_sensitive_data:
-                verdict = strictest(verdict, Verdict.REDACT)
+            elif tp.redact_sensitive_data and verdict is not Verdict.DENY:
+                verdict = Verdict.REDACT
                 reasons.append(f"redacted {len(sd)} sensitive value(s)")
         return verdict, findings, reasons
 
