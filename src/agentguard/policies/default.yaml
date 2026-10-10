@@ -1,0 +1,60 @@
+# Default policy: a safe baseline for a general-purpose assistant agent.
+# Rules are evaluated top to bottom; the first rule whose `tools` glob matches wins.
+# `approval_when` lists constraints that, when VIOLATED, escalate to human approval.
+name: default
+version: "1"
+description: Read-only by default, risky actions need approval, destructive actions are denied.
+default_action: deny
+risk_thresholds:
+  approval: 60
+  deny: 85
+tools:
+  - name: block-shell
+    tools: ["shell", "exec", "run_command", "python_eval"]
+    action: deny
+    reason: Arbitrary code execution is not permitted for this agent.
+  - name: web-search
+    tools: ["web_search"]
+    args:
+      query: {required: true, type: string, max_length: 500}
+    rate_limit: {max_calls: 10, per_seconds: 60}
+  - name: read-files
+    tools: ["read_file", "list_files"]
+    args:
+      path:
+        required: true
+        type: string
+        allowed_prefixes: ["workspace/", "docs/"]
+        deny_patterns: ['(^|/)\.env', '\.pem$', 'id_rsa', '(^|/)secrets?/']
+  - name: write-files
+    tools: ["write_file"]
+    action: require_approval
+    reason: File writes are reviewed by a human.
+    args:
+      path: {required: true, type: string, allowed_prefixes: ["workspace/"]}
+      content: {required: true, type: string, max_length: 100000}
+  - name: http-fetch
+    tools: ["http_get"]
+    args:
+      url:
+        required: true
+        type: string
+        pattern: '^https://.*'
+        allowed_domains: ["api.github.com", "docs.python.org", "wikipedia.org"]
+    rate_limit: {max_calls: 20, per_seconds: 60}
+  - name: send-email
+    tools: ["send_email"]
+    args:
+      to: {required: true, type: string, allowed_domains: ["example.com"]}
+      subject: {required: true, type: string, max_length: 200}
+      body: {required: true, type: string, max_length: 5000}
+    allow_extra_args: false
+    approval_when:
+      body: {max_length: 1000}
+  - name: llm-calls
+    tools: ["llm_completion"]
+    budget: 1.0
+  - name: deny-delete
+    tools: ["delete_*", "drop_*"]
+    action: deny
+    reason: Destructive operations are never performed autonomously.

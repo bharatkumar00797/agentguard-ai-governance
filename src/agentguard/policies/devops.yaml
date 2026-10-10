@@ -1,0 +1,29 @@
+# Ops / coding agent policy: read anything in the repo, run a small allowlist of commands,
+# production deploys need approval and destructive commands are blocked.
+name: devops
+version: "1"
+description: DevOps agent with a command allowlist and approval-gated production changes.
+default_action: deny
+tools:
+  - name: repo-read
+    tools: ["read_file", "list_files", "search_code"]
+    args:
+      path: {type: string, allowed_prefixes: ["repo/"], deny_patterns: ['(^|/)\.env', '\.pem$']}
+  - name: safe-commands
+    tools: ["run_command"]
+    args:
+      command:
+        required: true
+        type: string
+        pattern: '^(pytest|ruff|mypy|git (status|diff|log)|kubectl get)( [^;&|`$<>]*)?$'
+        deny_patterns: ['rm\s+-rf', '--force', 'curl .*\|\s*(ba)?sh']
+    rate_limit: {max_calls: 30, per_seconds: 60}
+  - name: deploy
+    tools: ["deploy"]
+    args:
+      environment: {required: true, type: string, enum: ["staging", "production"]}
+    approval_when:
+      environment: {enum: ["staging"]}
+  - name: llm-budget
+    tools: ["llm_completion"]
+    budget: 5.0

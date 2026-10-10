@@ -1,0 +1,35 @@
+# Payments agent policy: money movement has hard caps and human approval above a threshold.
+name: fintech
+version: "1"
+description: Payments support agent with spend caps, approval gates and strict data handling.
+default_action: deny
+risk_thresholds:
+  approval: 50
+  deny: 80
+tools:
+  - name: lookup-customer
+    tools: ["get_customer", "get_transactions"]
+    args:
+      customer_id: {required: true, type: string, pattern: '^CUS-[0-9]{6}$'}
+    rate_limit: {max_calls: 30, per_seconds: 60}
+  - name: refunds
+    tools: ["issue_refund"]
+    allow_extra_args: false
+    args:
+      customer_id: {required: true, type: string, pattern: '^CUS-[0-9]{6}$'}
+      amount: {required: true, type: number, min: 0.01, max: 5000}
+      currency: {required: true, type: string, enum: ["USD", "EUR", "INR"]}
+      reason: {type: string, max_length: 300}
+    approval_when:
+      amount: {max: 200}
+    rate_limit: {max_calls: 5, per_seconds: 3600}
+  - name: transfers
+    tools: ["transfer_funds", "wire_*"]
+    action: require_approval
+    reason: Outbound money movement always requires a second pair of eyes.
+    args:
+      amount: {required: true, type: number, min: 0.01, max: 25000}
+  - name: no-account-changes
+    tools: ["close_account", "change_limits", "update_kyc"]
+    action: deny
+    reason: Account lifecycle changes are handled by staff only.
