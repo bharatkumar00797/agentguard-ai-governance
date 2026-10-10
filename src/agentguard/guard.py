@@ -158,8 +158,17 @@ class Guard:
         verdict = result.verdict
         redacted: dict[str, Any] | None = None
 
-        if self.policy.text.scan_tool_arguments and call.arguments:
-            blob = json.dumps(call.arguments, ensure_ascii=False, default=str)
+        rule = self.engine.match(call)
+        # Arguments already pinned by a strict allowlist (domain, enum, pattern) are trusted
+        # values, e.g. an approved recipient address, and are not redacted.
+        pinned = {
+            k
+            for k, c in (rule.args.items() if rule else ())
+            if c.allowed_domains is not None or c.enum is not None or c.pattern is not None
+        }
+        scanned = {k: v for k, v in call.arguments.items() if k not in pinned}
+        if self.policy.text.scan_tool_arguments and scanned:
+            blob = json.dumps(scanned, ensure_ascii=False, default=str)
             inj = self.injection.scan(blob) + self.jailbreak.scan(blob)
             sd = self.sensitive.scan(blob)
             findings += inj + sd
@@ -168,7 +177,7 @@ class Guard:
                 reasons.append("tool arguments contain a secret (possible exfiltration)")
             elif sd and verdict is Verdict.ALLOW and self.policy.text.redact_sensitive_data:
                 verdict = Verdict.REDACT
-                redacted = _redact_value(call.arguments, self.sensitive)
+                redacted = {**call.arguments, **_redact_value(scanned, self.sensitive)}
                 reasons.append(f"redacted {len(sd)} sensitive value(s) in arguments")
             if any(f.severity in _BLOCKING for f in inj):
                 verdict = strictest(verdict, Verdict.REQUIRE_APPROVAL)

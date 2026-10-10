@@ -1,0 +1,15 @@
+id: pii-redaction
+title: PII redaction in prompts, tool arguments and answers
+description: >
+  The user pastes customer details. Personal data is redacted before it reaches the model,
+  in tool arguments and in the final answer, while the task still completes.
+policy: default
+task: >
+  Draft a short note to ops@example.com about customer Jane (jane.doe@gmail.com,
+  card 4111 1111 1111 1111) whose order is delayed.
+tools:
+  send_email: sent
+script:
+  - '{"tool": "send_email", "arguments": {"to": "ops@example.com", "subject": "Delayed order", "body": "Customer jane.doe@gmail.com order is delayed."}}'
+  - '{"final": "Sent a note to ops about the delayed order for jane.doe@gmail.com."}'
+expect: {blocked: 0, approvals: 0, executed: 1}
