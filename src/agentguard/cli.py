@@ -156,6 +156,34 @@ def cmd_scenarios(_: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_serve(args: argparse.Namespace) -> int:
+    import dataclasses
+
+    import uvicorn
+
+    from agentguard.api import create_app
+    from agentguard.api.settings import ApiSettings
+
+    try:
+        port = args.port or int(os.getenv("PORT") or 8000)
+        settings = ApiSettings.from_env()
+    except ValueError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
+    if args.dev:
+        settings = dataclasses.replace(settings, dev_mode=True)
+    if settings.access_mode == "dev" and args.host not in {"127.0.0.1", "::1", "localhost"}:
+        print("warning: dev mode without API keys is exposed beyond localhost", file=sys.stderr)
+    mode = {
+        "api-key": "API-key auth",
+        "dev": "dev mode (no auth)",
+        "public-demo": "public demo (packaged policies + mock provider)",
+    }[settings.access_mode]
+    print(f"AgentGuard {__version__} on http://{args.host}:{port} | {mode}", flush=True)
+    uvicorn.run(create_app(settings), host=args.host, port=port, log_level="info")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(
         prog="agentguard", description="Security and governance guardrails for LLM agents."
@@ -196,6 +224,12 @@ def build_parser() -> argparse.ArgumentParser:
     v = asub.add_parser("verify", help="verify the hash chain of an audit log")
     v.add_argument("path")
     v.set_defaults(func=cmd_audit_verify)
+
+    sv = sub.add_parser("serve", help="start the REST API and web dashboard")
+    sv.add_argument("--host", default=os.getenv("HOST", "127.0.0.1"))
+    sv.add_argument("--port", type=int, default=None, help="port (default: $PORT or 8000)")
+    sv.add_argument("--dev", action="store_true", help="dev mode: no API key required")
+    sv.set_defaults(func=cmd_serve)
     return ap
 
 
