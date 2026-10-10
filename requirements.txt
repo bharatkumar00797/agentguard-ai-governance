@@ -1,0 +1,6 @@
+# Runtime dependencies (used by serverless builders such as Vercel); see pyproject.toml.
+pydantic>=2.6
+httpx>=0.27
+fastapi>=0.110
+uvicorn[standard]>=0.29
+pyyaml>=6.0

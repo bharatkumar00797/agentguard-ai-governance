@@ -1,0 +1,19 @@
+# Render Blueprint: https://render.com/docs/blueprint-spec
+# Deploys the Docker image as a public demo: packaged policies and scenarios with the offline mock provider.
+# To lock it down or use a real LLM, add AGENTGUARD_API_KEYS (and AGENTGUARD_PROVIDER,
+# AGENTGUARD_API_KEY, ...) as secret environment variables in the Render dashboard.
+services:
+  - type: web
+    name: agentguard-ai-governance
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      - key: AGENTGUARD_PROVIDER
+        value: mock
+      # Render's proxy appends the real client IP to X-Forwarded-For (per-client rate limits)
+      - key: AGENTGUARD_TRUST_PROXY
+        value: "true"
