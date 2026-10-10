@@ -58,7 +58,6 @@ class ApiSettings:
     trust_proxy: bool = False
     audit_path: str | None = None
     audit_key: bytes | None = None
-    max_audit_view: int = 200
 
     @property
     def auth_enabled(self) -> bool:

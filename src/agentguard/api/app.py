@@ -48,6 +48,7 @@ from agentguard.scenarios import list_scenarios, load_scenario, meets_expectatio
 
 STATIC_DIR = Path(__file__).parent / "static"
 MAX_BODY_BYTES = 64 * 1024
+MAX_AUDIT_VIEW = 200
 IdParam = Annotated[str, PathParam(min_length=1, max_length=64, pattern=r"^[A-Za-z0-9_-]+$")]
 
 
@@ -303,7 +304,7 @@ def create_app(settings: ApiSettings | None = None) -> FastAPI:
     # ----------------------------------------------------------------- audit
     @app.get("/api/audit", response_model=AuditOut, tags=["audit"])
     def audit_view(
-        _: CallerDep, limit: Annotated[int, Query(ge=1, le=cfg.max_audit_view)] = 50
+        _: CallerDep, limit: Annotated[int, Query(ge=1, le=MAX_AUDIT_VIEW)] = 50
     ) -> AuditOut:
         records = audit.records
         return AuditOut(total=len(records), head=audit.head, records=records[-limit:][::-1])
