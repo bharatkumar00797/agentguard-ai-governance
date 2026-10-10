@@ -193,7 +193,10 @@ SENSITIVE_KINDS: tuple[SensitiveKind, ...] = (
         "phone",
         "PHONE",
         Severity.MEDIUM,
-        re.compile(r"(?<![\w-])(\+?\d{1,3}[ -]?)?\(?\d{3,5}\)?[ -]?\d{3,4}[ -]?\d{4}(?![\w-])"),
+        re.compile(
+            r"(?<![\w-])(\+?\d{1,3}[ -]?)?"
+            r"(\(?\d{3,5}\)?[ -]?\d{3,4}[ -]?\d{4}|\d{5}[ -]?\d{5})(?![\w-])"
+        ),
     ),
 )
 
